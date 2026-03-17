@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>スライドパズルゲーム</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: "Arial", sans-serif;
+    background: linear-gradient(135deg, #74ebd5, #9face6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.game-container {
+    text-align: center;
+}
+
+h1 {
+    color: white;
+    margin-bottom: 10px;
+}
+
+#puzzle {
+    display: grid;
+    grid-template-columns: repeat(4, 70px);
+    grid-template-rows: repeat(4, 70px);
+    gap: 8px;
+    justify-content: center;
+}
+
+.tile {
+    width: 70px;
+    height: 70px;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.tile:active {
+    transform: scale(0.95);
+}
+
+.empty {
+    background: transparent;
+    box-shadow: none;
+    cursor: default;
+}
+
+button {
+    margin-top: 15px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    background: #ff7eb3;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #ff5c9a;
+}
+</style>
+</head>
+
+<body>
+
+<div class="game-container">
+    <h1>スライドパズル</h1>
+    <div id="puzzle"></div>
+    <button onclick="shuffle()">シャッフル</button>
+</div>
+
+<script>
+let tiles = [];
+const size = 4;
+
+function init() {
+    tiles = [...Array(size * size).keys()];
+    render();
+}
+
+function render() {
+    const puzzle = document.getElementById("puzzle");
+    puzzle.innerHTML = "";
+
+    tiles.forEach((num, index) => {
+        const tile = document.createElement("div");
+
+        if (num === 0) {
+            tile.className = "tile empty";
+        } else {
+            tile.className = "tile";
+            tile.textContent = num;
+            tile.onclick = () => move(index);
+        }
+
+        puzzle.appendChild(tile);
+    });
+}
+
+function move(index) {
+    const emptyIndex = tiles.indexOf(0);
+
+    const validMoves = [
+        emptyIndex - 1,
+        emptyIndex + 1,
+        emptyIndex - size,
+        emptyIndex + size
+    ];
+
+    if (validMoves.includes(index)) {
+        [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+        render();
+        checkWin();
+    }
+}
+
+function shuffle() {
+    for (let i = 0; i < 200; i++) {
+        const rand = Math.floor(Math.random() * tiles.length);
+        move(rand);
+    }
+}
+
+function checkWin() {
+    for (let i = 0; i < tiles.length - 1; i++) {
+        if (tiles[i] !== i + 1) return;
+    }
+    setTimeout(() => alert("クリア！🎉"), 100);
+}
+
+init();
+</script>
+
+</body>
+</html>
