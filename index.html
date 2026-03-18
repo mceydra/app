@@ -2,149 +2,152 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>スライドパズルゲーム</title>
-
+<title>Mini Invader Game</title>
 <style>
-body {
+  body {
     margin: 0;
-    font-family: "Arial", sans-serif;
-    background: linear-gradient(135deg, #74ebd5, #9face6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-.game-container {
+    background: black;
+    color: white;
     text-align: center;
-}
-
-h1 {
-    color: white;
-    margin-bottom: 10px;
-}
-
-#puzzle {
-    display: grid;
-    grid-template-columns: repeat(4, 70px);
-    grid-template-rows: repeat(4, 70px);
-    gap: 8px;
-    justify-content: center;
-}
-
-.tile {
-    width: 70px;
-    height: 70px;
-    background: white;
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    font-weight: bold;
-    color: #333;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    cursor: pointer;
-    transition: 0.2s;
-}
-
-.tile:active {
-    transform: scale(0.95);
-}
-
-.empty {
-    background: transparent;
-    box-shadow: none;
-    cursor: default;
-}
-
-button {
-    margin-top: 15px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 20px;
-    background: #ff7eb3;
-    color: white;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #ff5c9a;
-}
+    font-family: Arial, sans-serif;
+  }
+  canvas {
+    display: block;
+    margin: 20px auto;
+    background: #111;
+    border: 2px solid white;
+  }
 </style>
 </head>
-
 <body>
-
-<div class="game-container">
-    <h1>スライドパズル</h1>
-    <div id="puzzle"></div>
-    <button onclick="shuffle()">シャッフル</button>
-</div>
-
+<h1>Mini Invader Game</h1>
+<p>← → で移動 / スペースで発射</p>
+<canvas id="game" width="400" height="600"></canvas>
 <script>
-let tiles = [];
-const size = 4;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
 
-function init() {
-    tiles = [...Array(size * size).keys()];
-    render();
-}
+let player = {
+  x: 180,
+  y: 550,
+  width: 40,
+  height: 20,
+  speed: 5
+};
 
-function render() {
-    const puzzle = document.getElementById("puzzle");
-    puzzle.innerHTML = "";
+let bullets = [];
+let enemies = [];
+let keys = {};
+let score = 0;
 
-    tiles.forEach((num, index) => {
-        const tile = document.createElement("div");
-
-        if (num === 0) {
-            tile.className = "tile empty";
-        } else {
-            tile.className = "tile";
-            tile.textContent = num;
-            tile.onclick = () => move(index);
-        }
-
-        puzzle.appendChild(tile);
+// 敵生成
+for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < 8; col++) {
+    enemies.push({
+      x: 40 + col * 40,
+      y: 40 + row * 40,
+      width: 30,
+      height: 20,
+      alive: true
     });
+  }
 }
 
-function move(index) {
-    const emptyIndex = tiles.indexOf(0);
+let enemyDirection = 1;
 
-    const validMoves = [
-        emptyIndex - 1,
-        emptyIndex + 1,
-        emptyIndex - size,
-        emptyIndex + size
-    ];
+function drawPlayer() {
+  ctx.fillStyle = 'cyan';
+  ctx.fillRect(player.x, player.y, player.width, player.height);
+}
 
-    if (validMoves.includes(index)) {
-        [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
-        render();
-        checkWin();
+function drawBullets() {
+  ctx.fillStyle = 'yellow';
+  bullets.forEach(b => {
+    ctx.fillRect(b.x, b.y, 4, 10);
+  });
+}
+
+function drawEnemies() {
+  ctx.fillStyle = 'lime';
+  enemies.forEach(e => {
+    if (e.alive) ctx.fillRect(e.x, e.y, e.width, e.height);
+  });
+}
+
+function update() {
+  // 移動
+  if (keys['ArrowLeft']) player.x -= player.speed;
+  if (keys['ArrowRight']) player.x += player.speed;
+
+  player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+
+  // 弾移動
+  bullets.forEach(b => b.y -= 7);
+  bullets = bullets.filter(b => b.y > 0);
+
+  // 敵移動
+  let hitEdge = false;
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    e.x += enemyDirection * 1;
+    if (e.x < 0 || e.x + e.width > canvas.width) {
+      hitEdge = true;
     }
+  });
+
+  if (hitEdge) {
+    enemyDirection *= -1;
+    enemies.forEach(e => e.y += 20);
+  }
+
+  // 当たり判定
+  bullets.forEach(b => {
+    enemies.forEach(e => {
+      if (e.alive &&
+          b.x < e.x + e.width &&
+          b.x + 4 > e.x &&
+          b.y < e.y + e.height &&
+          b.y + 10 > e.y) {
+        e.alive = false;
+        b.y = -10;
+        score += 10;
+      }
+    });
+  });
 }
 
-function shuffle() {
-    for (let i = 0; i < 200; i++) {
-        const rand = Math.floor(Math.random() * tiles.length);
-        move(rand);
-    }
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawPlayer();
+  drawBullets();
+  drawEnemies();
+
+  ctx.fillStyle = 'white';
+  ctx.fillText('Score: ' + score, 10, 20);
 }
 
-function checkWin() {
-    for (let i = 0; i < tiles.length - 1; i++) {
-        if (tiles[i] !== i + 1) return;
-    }
-    setTimeout(() => alert("クリア！🎉"), 100);
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
 }
 
-init();
+// 入力
+document.addEventListener('keydown', e => {
+  keys[e.code] = true;
+
+  if (e.code === 'Space') {
+    bullets.push({ x: player.x + player.width / 2, y: player.y });
+  }
+});
+
+document.addEventListener('keyup', e => {
+  keys[e.code] = false;
+});
+
+loop();
 </script>
-
 </body>
 </html>
+
