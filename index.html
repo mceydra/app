@@ -39,6 +39,7 @@ let bullets = [];
 let enemies = [];
 let keys = {};
 let score = 0;
+let gameClear = false;
 
 // 敵生成
 for (let row = 0; row < 4; row++) {
@@ -114,6 +115,34 @@ function update() {
       }
     });
   });
+
+  // クリア判定
+  const allDead = enemies.every(e => !e.alive);
+  if (allDead) {
+    gameClear = true;
+  }
+}
+  });
+
+  if (hitEdge) {
+    enemyDirection *= -1;
+    enemies.forEach(e => e.y += 20);
+  }
+
+  // 当たり判定
+  bullets.forEach(b => {
+    enemies.forEach(e => {
+      if (e.alive &&
+          b.x < e.x + e.width &&
+          b.x + 4 > e.x &&
+          b.y < e.y + e.height &&
+          b.y + 10 > e.y) {
+        e.alive = false;
+        b.y = -10;
+        score += 10;
+      }
+    });
+  });
 }
 
 function draw() {
@@ -125,10 +154,18 @@ function draw() {
 
   ctx.fillStyle = 'white';
   ctx.fillText('Score: ' + score, 10, 20);
+
+  if (gameClear) {
+    ctx.fillStyle = 'yellow';
+    ctx.font = '30px Arial';
+    ctx.fillText('CLEAR!', 140, 300);
+  }
 }
 
 function loop() {
-  update();
+  if (!gameClear) {
+    update();
+  }
   draw();
   requestAnimationFrame(loop);
 }
@@ -151,3 +188,5 @@ loop();
 </body>
 </html>
 
+ 
+ 
