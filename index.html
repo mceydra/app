@@ -2,155 +2,136 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Stylish Mini Kart Game</title>
+<title>リズムゲーム</title>
 <style>
-*{box-sizing:border-box}
 body {
-  margin:0;
-  background: radial-gradient(circle at center, #1b2735, #090a0f);
-  overflow:hidden;
-  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  background: #111;
+  color: #fff;
+  font-family: sans-serif;
+  text-align: center;
 }
-canvas {
-  display:block;
-  margin:20px auto;
-  border-radius:16px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.6);
-  background:#2c2c2c;
+#game {
+  position: relative;
+  width: 400px;
+  height: 600px;
+  margin: 20px auto;
+  background: #222;
+  overflow: hidden;
+  border-radius: 10px;
 }
-#ui {
-  position:absolute;
-  top:10px;
-  left:50%;
-  transform:translateX(-50%);
-  color:white;
-  background:rgba(0,0,0,0.5);
-  padding:8px 16px;
-  border-radius:20px;
-  font-size:14px;
+.lane {
+  position: absolute;
+  width: 25%;
+  height: 100%;
+  border-left: 1px solid #444;
+}
+.note {
+  position: absolute;
+  width: 90%;
+  height: 20px;
+  background: cyan;
+  left: 5%;
+  border-radius: 5px;
+}
+#hitLine {
+  position: absolute;
+  bottom: 80px;
+  width: 100%;
+  height: 5px;
+  background: red;
+}
+#score {
+  font-size: 24px;
+}
+button {
+  padding: 10px 20px;
+  font-size: 18px;
 }
 </style>
 </head>
 <body>
-<div id="ui">← → 移動 / ↑ 加速</div>
-<canvas id="game" width="400" height="600"></canvas>
+<h1>リズムゲーム</h1>
+<div id="score">Score: 0</div>
+<button onclick="startGame()">スタート</button>
+<div id="game">
+  <div id="hitLine"></div>
+</div>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+const game = document.getElementById("game");
+const scoreDisplay = document.getElementById("score");
 
-let keys = {};
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup", e => keys[e.key] = false);
-
-let player = { x: 200, y: 500, w: 30, h: 50, speed: 0 };
-let obstacles = [];
 let score = 0;
-let roadOffset = 0;
+let notes = [];
+let gameInterval;
 
-function spawnObstacle(){
-  obstacles.push({
-    x: 120 + Math.random() * 160,
-    y: -50,
-    w: 30,
-    h: 50,
-    speed: 3 + Math.random() * 2
-  });
+const lanes = 4;
+const laneWidth = 100 / lanes;
+
+// レーン作成
+for (let i = 0; i < lanes; i++) {
+  const lane = document.createElement("div");
+  lane.className = "lane";
+  lane.style.left = (i * laneWidth) + "%";
+  game.appendChild(lane);
 }
-setInterval(spawnObstacle, 900);
 
-function update(){
-  if(keys["ArrowLeft"]) player.x -= 5;
-  if(keys["ArrowRight"]) player.x += 5;
-  if(keys["ArrowUp"]) player.speed = Math.min(player.speed + 0.15, 10);
-  else player.speed *= 0.97;
+function createNote() {
+  const lane = Math.floor(Math.random() * lanes);
+  const note = document.createElement("div");
+  note.className = "note";
+  note.style.left = (lane * laneWidth + 2.5) + "%";
+  note.style.top = "0px";
+  game.appendChild(note);
 
-  player.x = Math.max(110, Math.min(260, player.x));
+  notes.push({ element: note, lane: lane, y: 0 });
+}
 
-  roadOffset += player.speed;
+function updateGame() {
+  notes.forEach((note, index) => {
+    note.y += 4;
+    note.element.style.top = note.y + "px";
 
-  for(let i = obstacles.length - 1; i >= 0; i--){
-    let o = obstacles[i];
-    o.y += o.speed + player.speed * 0.6;
-
-    if(player.x < o.x + o.w &&
-       player.x + player.w > o.x &&
-       player.y < o.y + o.h &&
-       player.y + player.h > o.y){
-      alert("ゲームオーバー！スコア: " + score);
-      location.reload();
+    if (note.y > 600) {
+      game.removeChild(note.element);
+      notes.splice(index, 1);
     }
-
-    if(o.y > canvas.height){
-      obstacles.splice(i,1);
-      score++;
-    }
-  }
-}
-
-function drawRoad(){
-  // 芝生
-  ctx.fillStyle = "#2ecc71";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // 道
-  ctx.fillStyle = "#555";
-  ctx.fillRect(100,0,200,canvas.height);
-
-  // 路肩
-  ctx.fillStyle = "#e74c3c";
-  for(let y = -40; y < canvas.height; y += 40){
-    ctx.fillRect(100, y + (roadOffset % 40), 10, 20);
-    ctx.fillRect(290, y + (roadOffset % 40), 10, 20);
-  }
-
-  // センターライン
-  ctx.strokeStyle = "#fff";
-  ctx.setLineDash([20,20]);
-  ctx.beginPath();
-  ctx.moveTo(200, -40 + (roadOffset % 40));
-  ctx.lineTo(200, canvas.height);
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-
-function drawPlayer(){
-  ctx.fillStyle = "#ff4757";
-  ctx.beginPath();
-  ctx.roundRect(player.x, player.y, player.w, player.h, 8);
-  ctx.fill();
-
-  // 窓
-  ctx.fillStyle = "#ecf0f1";
-  ctx.fillRect(player.x+5, player.y+5, 20, 10);
-}
-
-function drawObstacles(){
-  obstacles.forEach(o => {
-    ctx.fillStyle = "#3498db";
-    ctx.beginPath();
-    ctx.roundRect(o.x, o.y, o.w, o.h, 8);
-    ctx.fill();
   });
 }
 
-function drawUI(){
-  ctx.fillStyle = "white";
-  ctx.font = "bold 18px sans-serif";
-  ctx.fillText("Score: " + score, 10, 25);
+function hitCheck(lane) {
+  notes.forEach((note, index) => {
+    if (note.lane === lane && note.y > 480 && note.y < 540) {
+      score += 10;
+      scoreDisplay.textContent = "Score: " + score;
+      game.removeChild(note.element);
+      notes.splice(index, 1);
+    }
+  });
 }
 
-function gameLoop(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  update();
-  drawRoad();
-  drawPlayer();
-  drawObstacles();
-  drawUI();
-  requestAnimationFrame(gameLoop);
-}
+// キー操作
+window.addEventListener("keydown", (e) => {
+  if (e.key === "d") hitCheck(0);
+  if (e.key === "f") hitCheck(1);
+  if (e.key === "j") hitCheck(2);
+  if (e.key === "k") hitCheck(3);
+});
 
-gameLoop();
+function startGame() {
+  score = 0;
+  notes = [];
+  scoreDisplay.textContent = "Score: 0";
+
+  clearInterval(gameInterval);
+
+  gameInterval = setInterval(() => {
+    updateGame();
+  }, 16);
+
+  setInterval(createNote, 800);
+}
 </script>
 </body>
 </html>
