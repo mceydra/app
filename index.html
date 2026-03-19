@@ -2,191 +2,115 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mini Invader Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シンプルインベーダーゲーム</title>
 <style>
   body {
     margin: 0;
     background: black;
     color: white;
+    font-family: sans-serif;
     text-align: center;
-    font-family: Arial, sans-serif;
   }
   canvas {
     display: block;
-    margin: 20px auto;
+    margin: 0 auto;
     background: #111;
-    border: 2px solid white;
   }
 </style>
 </head>
 <body>
-<h1>Mini Invader Game</h1>
+<h1>インベーダー風ゲーム</h1>
 <p>← → で移動 / スペースで発射</p>
 <canvas id="game" width="400" height="600"></canvas>
+
 <script>
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-let player = {
-  x: 180,
-  y: 550,
-  width: 40,
-  height: 20,
-  speed: 5
-};
-
+let player = { x: 180, y: 550, w: 40, h: 20 };
 let bullets = [];
 let enemies = [];
-let keys = {};
-let score = 0;
-let gameClear = false;
+let gameOver = false;
+let win = false;
 
-// 敵生成
-for (let row = 0; row < 4; row++) {
-  for (let col = 0; col < 8; col++) {
-    enemies.push({
-      x: 40 + col * 40,
-      y: 40 + row * 40,
-      width: 30,
-      height: 20,
-      alive: true
-    });
+for (let r = 0; r < 4; r++) {
+  for (let c = 0; c < 6; c++) {
+    enemies.push({ x: 50 + c * 50, y: 50 + r * 40, w: 30, h: 20 });
   }
 }
 
-let enemyDirection = 1;
-
-function drawPlayer() {
-  ctx.fillStyle = 'cyan';
-  ctx.fillRect(player.x, player.y, player.width, player.height);
-}
-
-function drawBullets() {
-  ctx.fillStyle = 'yellow';
-  bullets.forEach(b => {
-    ctx.fillRect(b.x, b.y, 4, 10);
-  });
-}
-
-function drawEnemies() {
-  ctx.fillStyle = 'lime';
-  enemies.forEach(e => {
-    if (e.alive) ctx.fillRect(e.x, e.y, e.width, e.height);
-  });
-}
+let keys = {};
+document.addEventListener("keydown", e => {
+  keys[e.key] = true;
+  if (e.key === " ") {
+    bullets.push({ x: player.x + 18, y: player.y });
+  }
+});
+document.addEventListener("keyup", e => keys[e.key] = false);
 
 function update() {
-  // 移動
-  if (keys['ArrowLeft']) player.x -= player.speed;
-  if (keys['ArrowRight']) player.x += player.speed;
+  if (gameOver) return;
 
-  player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+  if (keys["ArrowLeft"]) player.x -= 5;
+  if (keys["ArrowRight"]) player.x += 5;
 
-  // 弾移動
-  bullets.forEach(b => b.y -= 7);
-  bullets = bullets.filter(b => b.y > 0);
+  bullets.forEach(b => b.y -= 5);
 
-  // 敵移動
-  let hitEdge = false;
+  bullets.forEach((b, bi) => {
+    enemies.forEach((e, ei) => {
+      if (b.x < e.x + e.w &&
+          b.x + 5 > e.x &&
+          b.y < e.y + e.h &&
+          b.y + 10 > e.y) {
+        enemies.splice(ei, 1);
+        bullets.splice(bi, 1);
+      }
+    });
+  });
+
   enemies.forEach(e => {
-    if (!e.alive) return;
-    e.x += enemyDirection * 1;
-    if (e.x < 0 || e.x + e.width > canvas.width) {
-      hitEdge = true;
+    e.y += 0.2;
+    if (e.y > player.y) {
+      gameOver = true;
     }
   });
 
-  if (hitEdge) {
-    enemyDirection *= -1;
-    enemies.forEach(e => e.y += 20);
+  if (enemies.length === 0) {
+    win = true;
+    gameOver = true;
   }
-
-  // 当たり判定
-  bullets.forEach(b => {
-    enemies.forEach(e => {
-      if (e.alive &&
-          b.x < e.x + e.width &&
-          b.x + 4 > e.x &&
-          b.y < e.y + e.height &&
-          b.y + 10 > e.y) {
-        e.alive = false;
-        b.y = -10;
-        score += 10;
-      }
-    });
-  });
-
-  // クリア判定
-  const allDead = enemies.every(e => !e.alive);
-  if (allDead) {
-    gameClear = true;
-  }
-}
-  });
-
-  if (hitEdge) {
-    enemyDirection *= -1;
-    enemies.forEach(e => e.y += 20);
-  }
-
-  // 当たり判定
-  bullets.forEach(b => {
-    enemies.forEach(e => {
-      if (e.alive &&
-          b.x < e.x + e.width &&
-          b.x + 4 > e.x &&
-          b.y < e.y + e.height &&
-          b.y + 10 > e.y) {
-        e.alive = false;
-        b.y = -10;
-        score += 10;
-      }
-    });
-  });
 }
 
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  drawPlayer();
-  drawBullets();
-  drawEnemies();
+  ctx.fillStyle = "white";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
 
-  ctx.fillStyle = 'white';
-  ctx.fillText('Score: ' + score, 10, 20);
+  bullets.forEach(b => {
+    ctx.fillRect(b.x, b.y, 5, 10);
+  });
 
-  if (gameClear) {
-    ctx.fillStyle = 'yellow';
-    ctx.font = '30px Arial';
-    ctx.fillText('CLEAR!', 140, 300);
+  ctx.fillStyle = "lime";
+  enemies.forEach(e => {
+    ctx.fillRect(e.x, e.y, e.w, e.h);
+  });
+
+  if (gameOver) {
+    ctx.fillStyle = "white";
+    ctx.font = "30px sans-serif";
+    ctx.fillText(win ? "CLEAR!" : "GAME OVER", 110, 300);
   }
 }
 
 function loop() {
-  if (!gameClear) {
-    update();
-  }
+  update();
   draw();
   requestAnimationFrame(loop);
 }
-
-// 入力
-document.addEventListener('keydown', e => {
-  keys[e.code] = true;
-
-  if (e.code === 'Space') {
-    bullets.push({ x: player.x + player.width / 2, y: player.y });
-  }
-});
-
-document.addEventListener('keyup', e => {
-  keys[e.code] = false;
-});
 
 loop();
 </script>
 </body>
 </html>
-
- 
- 
