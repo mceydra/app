@@ -3,57 +3,79 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>強化版インベーダーゲーム</title>
+<title>インベーダー（難易度付き）</title>
 <style>
   body { margin:0; background:black; color:white; text-align:center; font-family:sans-serif; }
   canvas { display:block; margin:0 auto; background:#111; }
+  button { margin:5px; padding:8px 16px; }
 </style>
 </head>
 <body>
-<h1>インベーダー強化版</h1>
-<p>← → 移動 / スペース 発射</p>
+<h1>インベーダーゲーム</h1>
+<p>難易度を選んでスタート</p>
+<button onclick="startGame('easy')">イージー</button>
+<button onclick="startGame('normal')">ノーマル</button>
+<button onclick="startGame('hard')">ハード</button>
+
 <canvas id="game" width="400" height="600"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let player = { x:180, y:550, w:40, h:20, lives:3 };
-let bullets = [];
-let enemyBullets = [];
-let enemies = [];
-let score = 0;
-let gameOver = false;
-let win = false;
+let player, bullets, enemyBullets, enemies;
+let score, gameOver, win;
+let enemyDir;
 
-// 敵生成
-for (let r=0;r<5;r++){
-  for (let c=0;c<7;c++){
-    enemies.push({ x:40+c*45, y:40+r*35, w:30, h:20 });
+// 難易度設定
+let settings = {
+  playerLives: 5,
+  enemySpeed: 1,
+  bulletSpeed: 6,
+  enemyFireRate: 0.02
+};
+
+function startGame(level){
+  if(level === 'easy'){
+    settings = { playerLives:5, enemySpeed:0.5, bulletSpeed:6, enemyFireRate:0.01 };
+  } else if(level === 'normal'){
+    settings = { playerLives:5, enemySpeed:1, bulletSpeed:6, enemyFireRate:0.02 };
+  } else {
+    settings = { playerLives:3, enemySpeed:1.5, bulletSpeed:7, enemyFireRate:0.04 };
+  }
+
+  player = { x:180, y:550, w:40, h:20, lives:settings.playerLives };
+  bullets = [];
+  enemyBullets = [];
+  enemies = [];
+  score = 0;
+  gameOver = false;
+  win = false;
+  enemyDir = 1;
+
+  for(let r=0;r<5;r++){
+    for(let c=0;c<7;c++){
+      enemies.push({ x:40+c*45, y:40+r*35, w:30, h:20 });
+    }
   }
 }
-
-let enemyDir = 1;
 
 let keys = {};
 document.addEventListener("keydown",e=>{
   keys[e.key]=true;
-  if(e.key===" ") bullets.push({x:player.x+18,y:player.y});
+  if(e.key===" " && !gameOver) bullets.push({x:player.x+18,y:player.y});
 });
 document.addEventListener("keyup",e=>keys[e.key]=false);
 
 function update(){
-  if(gameOver) return;
+  if(!player || gameOver) return;
 
-  // プレイヤー移動
   if(keys["ArrowLeft"]) player.x -= 5;
   if(keys["ArrowRight"]) player.x += 5;
 
-  // 弾移動
-  bullets.forEach(b=>b.y -= 6);
+  bullets.forEach(b=>b.y -= settings.bulletSpeed);
   enemyBullets.forEach(b=>b.y += 4);
 
-  // 弾衝突（敵）
   bullets.forEach((b,bi)=>{
     enemies.forEach((e,ei)=>{
       if(b.x<e.x+e.w && b.x+5>e.x && b.y<e.y+e.h && b.y+10>e.y){
@@ -64,21 +86,17 @@ function update(){
     });
   });
 
-  // 弾衝突（プレイヤー）
   enemyBullets.forEach((b,bi)=>{
     if(b.x<player.x+player.w && b.x+5>player.x && b.y<player.y+player.h && b.y+10>player.y){
       enemyBullets.splice(bi,1);
       player.lives--;
-      if(player.lives<=0){
-        gameOver = true;
-      }
+      if(player.lives<=0) gameOver = true;
     }
   });
 
-  // 敵移動
   let hitEdge = false;
   enemies.forEach(e=>{
-    e.x += enemyDir * 1;
+    e.x += enemyDir * settings.enemySpeed;
     if(e.x<0 || e.x+e.w>canvas.width) hitEdge = true;
   });
 
@@ -87,40 +105,37 @@ function update(){
     enemies.forEach(e=> e.y += 15);
   }
 
-  // 敵が弾を撃つ
-  if(Math.random() < 0.02 && enemies.length>0){
+  if(Math.random() < settings.enemyFireRate && enemies.length>0){
     let shooter = enemies[Math.floor(Math.random()*enemies.length)];
-    enemyBullets.push({x:shooter.x+15, y:shooter.y});
+    enemyBullets.push({x:shooter.x+15,y:shooter.y});
   }
 
-  // 敵が下に来たら負け
   enemies.forEach(e=>{
     if(e.y + e.h > player.y) gameOver = true;
   });
 
-  if(enemies.length===0){
-    win = true;
-    gameOver = true;
-  }
+  if(enemies.length===0){ win=true; gameOver=true; }
 }
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // プレイヤー
+  if(!player){
+    ctx.fillStyle="white";
+    ctx.fillText("上のボタンで開始",130,300);
+    return;
+  }
+
   ctx.fillStyle="white";
   ctx.fillRect(player.x,player.y,player.w,player.h);
 
-  // 弾
   bullets.forEach(b=>ctx.fillRect(b.x,b.y,5,10));
   ctx.fillStyle="red";
   enemyBullets.forEach(b=>ctx.fillRect(b.x,b.y,5,10));
 
-  // 敵
   ctx.fillStyle="lime";
   enemies.forEach(e=>ctx.fillRect(e.x,e.y,e.w,e.h));
 
-  // UI
   ctx.fillStyle="white";
   ctx.fillText("Score: "+score,10,20);
   ctx.fillText("Lives: "+player.lives,300,20);
