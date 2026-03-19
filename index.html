@@ -2,18 +2,37 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Mini Kart Game</title>
+<title>Stylish Mini Kart Game</title>
 <style>
-body { margin:0; background:#222; overflow:hidden; }
-canvas { display:block; margin:0 auto; background:#555; }
+*{box-sizing:border-box}
+body {
+  margin:0;
+  background: radial-gradient(circle at center, #1b2735, #090a0f);
+  overflow:hidden;
+  font-family: 'Segoe UI', sans-serif;
+}
+canvas {
+  display:block;
+  margin:20px auto;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);
+  background:#2c2c2c;
+}
 #ui {
-  position:absolute; top:10px; left:50%; transform:translateX(-50%);
-  color:white; font-family:sans-serif;
+  position:absolute;
+  top:10px;
+  left:50%;
+  transform:translateX(-50%);
+  color:white;
+  background:rgba(0,0,0,0.5);
+  padding:8px 16px;
+  border-radius:20px;
+  font-size:14px;
 }
 </style>
 </head>
 <body>
-<div id="ui">← → で移動 / ↑で加速</div>
+<div id="ui">← → 移動 / ↑ 加速</div>
 <canvas id="game" width="400" height="600"></canvas>
 
 <script>
@@ -27,34 +46,33 @@ document.addEventListener("keyup", e => keys[e.key] = false);
 let player = { x: 200, y: 500, w: 30, h: 50, speed: 0 };
 let obstacles = [];
 let score = 0;
+let roadOffset = 0;
 
 function spawnObstacle(){
   obstacles.push({
-    x: Math.random() * 360,
+    x: 120 + Math.random() * 160,
     y: -50,
     w: 30,
     h: 50,
     speed: 3 + Math.random() * 2
   });
 }
-
-setInterval(spawnObstacle, 1000);
+setInterval(spawnObstacle, 900);
 
 function update(){
-  // 操作
   if(keys["ArrowLeft"]) player.x -= 5;
   if(keys["ArrowRight"]) player.x += 5;
-  if(keys["ArrowUp"]) player.speed = Math.min(player.speed + 0.1, 8);
-  else player.speed *= 0.98;
+  if(keys["ArrowUp"]) player.speed = Math.min(player.speed + 0.15, 10);
+  else player.speed *= 0.97;
 
-  player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
+  player.x = Math.max(110, Math.min(260, player.x));
 
-  // 障害物
+  roadOffset += player.speed;
+
   for(let i = obstacles.length - 1; i >= 0; i--){
     let o = obstacles[i];
-    o.y += o.speed + player.speed * 0.5;
+    o.y += o.speed + player.speed * 0.6;
 
-    // 当たり判定
     if(player.x < o.x + o.w &&
        player.x + player.w > o.x &&
        player.y < o.y + o.h &&
@@ -71,32 +89,55 @@ function update(){
 }
 
 function drawRoad(){
-  ctx.fillStyle = "#444";
-  ctx.fillRect(100, 0, 200, canvas.height);
+  // 芝生
+  ctx.fillStyle = "#2ecc71";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  ctx.strokeStyle = "white";
+  // 道
+  ctx.fillStyle = "#555";
+  ctx.fillRect(100,0,200,canvas.height);
+
+  // 路肩
+  ctx.fillStyle = "#e74c3c";
+  for(let y = -40; y < canvas.height; y += 40){
+    ctx.fillRect(100, y + (roadOffset % 40), 10, 20);
+    ctx.fillRect(290, y + (roadOffset % 40), 10, 20);
+  }
+
+  // センターライン
+  ctx.strokeStyle = "#fff";
   ctx.setLineDash([20,20]);
   ctx.beginPath();
-  ctx.moveTo(200, 0);
+  ctx.moveTo(200, -40 + (roadOffset % 40));
   ctx.lineTo(200, canvas.height);
   ctx.stroke();
   ctx.setLineDash([]);
 }
 
 function drawPlayer(){
-  ctx.fillStyle = "red";
-  ctx.fillRect(player.x, player.y, player.w, player.h);
+  ctx.fillStyle = "#ff4757";
+  ctx.beginPath();
+  ctx.roundRect(player.x, player.y, player.w, player.h, 8);
+  ctx.fill();
+
+  // 窓
+  ctx.fillStyle = "#ecf0f1";
+  ctx.fillRect(player.x+5, player.y+5, 20, 10);
 }
 
 function drawObstacles(){
-  ctx.fillStyle = "blue";
-  obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+  obstacles.forEach(o => {
+    ctx.fillStyle = "#3498db";
+    ctx.beginPath();
+    ctx.roundRect(o.x, o.y, o.w, o.h, 8);
+    ctx.fill();
+  });
 }
 
 function drawUI(){
   ctx.fillStyle = "white";
-  ctx.font = "16px sans-serif";
-  ctx.fillText("Score: " + score, 10, 20);
+  ctx.font = "bold 18px sans-serif";
+  ctx.fillText("Score: " + score, 10, 25);
 }
 
 function gameLoop(){
