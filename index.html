@@ -2,157 +2,114 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>インベーダー（難易度付き）</title>
+<title>Mini Kart Game</title>
 <style>
-  body { margin:0; background:black; color:white; text-align:center; font-family:sans-serif; }
-  canvas { display:block; margin:0 auto; background:#111; }
-  button { margin:5px; padding:8px 16px; }
+body { margin:0; background:#222; overflow:hidden; }
+canvas { display:block; margin:0 auto; background:#555; }
+#ui {
+  position:absolute; top:10px; left:50%; transform:translateX(-50%);
+  color:white; font-family:sans-serif;
+}
 </style>
 </head>
 <body>
-<h1>インベーダーゲーム</h1>
-<p>難易度を選んでスタート</p>
-<button onclick="startGame('easy')">イージー</button>
-<button onclick="startGame('normal')">ノーマル</button>
-<button onclick="startGame('hard')">ハード</button>
-
+<div id="ui">← → で移動 / ↑で加速</div>
 <canvas id="game" width="400" height="600"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let player, bullets, enemyBullets, enemies;
-let score, gameOver, win;
-let enemyDir;
+let keys = {};
+document.addEventListener("keydown", e => keys[e.key] = true);
+document.addEventListener("keyup", e => keys[e.key] = false);
 
-// 難易度設定
-let settings = {
-  playerLives: 5,
-  enemySpeed: 1,
-  bulletSpeed: 6,
-  enemyFireRate: 0.02
-};
+let player = { x: 200, y: 500, w: 30, h: 50, speed: 0 };
+let obstacles = [];
+let score = 0;
 
-function startGame(level){
-  if(level === 'easy'){
-    settings = { playerLives:5, enemySpeed:0.5, bulletSpeed:6, enemyFireRate:0.01 };
-  } else if(level === 'normal'){
-    settings = { playerLives:5, enemySpeed:1, bulletSpeed:6, enemyFireRate:0.02 };
-  } else {
-    settings = { playerLives:3, enemySpeed:1.5, bulletSpeed:7, enemyFireRate:0.04 };
-  }
-
-  player = { x:180, y:550, w:40, h:20, lives:settings.playerLives };
-  bullets = [];
-  enemyBullets = [];
-  enemies = [];
-  score = 0;
-  gameOver = false;
-  win = false;
-  enemyDir = 1;
-
-  for(let r=0;r<5;r++){
-    for(let c=0;c<7;c++){
-      enemies.push({ x:40+c*45, y:40+r*35, w:30, h:20 });
-    }
-  }
+function spawnObstacle(){
+  obstacles.push({
+    x: Math.random() * 360,
+    y: -50,
+    w: 30,
+    h: 50,
+    speed: 3 + Math.random() * 2
+  });
 }
 
-let keys = {};
-document.addEventListener("keydown",e=>{
-  keys[e.key]=true;
-  if(e.key===" " && !gameOver) bullets.push({x:player.x+18,y:player.y});
-});
-document.addEventListener("keyup",e=>keys[e.key]=false);
+setInterval(spawnObstacle, 1000);
 
 function update(){
-  if(!player || gameOver) return;
-
+  // 操作
   if(keys["ArrowLeft"]) player.x -= 5;
   if(keys["ArrowRight"]) player.x += 5;
+  if(keys["ArrowUp"]) player.speed = Math.min(player.speed + 0.1, 8);
+  else player.speed *= 0.98;
 
-  bullets.forEach(b=>b.y -= settings.bulletSpeed);
-  enemyBullets.forEach(b=>b.y += 4);
+  player.x = Math.max(0, Math.min(canvas.width - player.w, player.x));
 
-  bullets.forEach((b,bi)=>{
-    enemies.forEach((e,ei)=>{
-      if(b.x<e.x+e.w && b.x+5>e.x && b.y<e.y+e.h && b.y+10>e.y){
-        enemies.splice(ei,1);
-        bullets.splice(bi,1);
-        score += 100;
-      }
-    });
-  });
+  // 障害物
+  for(let i = obstacles.length - 1; i >= 0; i--){
+    let o = obstacles[i];
+    o.y += o.speed + player.speed * 0.5;
 
-  enemyBullets.forEach((b,bi)=>{
-    if(b.x<player.x+player.w && b.x+5>player.x && b.y<player.y+player.h && b.y+10>player.y){
-      enemyBullets.splice(bi,1);
-      player.lives--;
-      if(player.lives<=0) gameOver = true;
+    // 当たり判定
+    if(player.x < o.x + o.w &&
+       player.x + player.w > o.x &&
+       player.y < o.y + o.h &&
+       player.y + player.h > o.y){
+      alert("ゲームオーバー！スコア: " + score);
+      location.reload();
     }
-  });
 
-  let hitEdge = false;
-  enemies.forEach(e=>{
-    e.x += enemyDir * settings.enemySpeed;
-    if(e.x<0 || e.x+e.w>canvas.width) hitEdge = true;
-  });
-
-  if(hitEdge){
-    enemyDir *= -1;
-    enemies.forEach(e=> e.y += 15);
+    if(o.y > canvas.height){
+      obstacles.splice(i,1);
+      score++;
+    }
   }
-
-  if(Math.random() < settings.enemyFireRate && enemies.length>0){
-    let shooter = enemies[Math.floor(Math.random()*enemies.length)];
-    enemyBullets.push({x:shooter.x+15,y:shooter.y});
-  }
-
-  enemies.forEach(e=>{
-    if(e.y + e.h > player.y) gameOver = true;
-  });
-
-  if(enemies.length===0){ win=true; gameOver=true; }
 }
 
-function draw(){
+function drawRoad(){
+  ctx.fillStyle = "#444";
+  ctx.fillRect(100, 0, 200, canvas.height);
+
+  ctx.strokeStyle = "white";
+  ctx.setLineDash([20,20]);
+  ctx.beginPath();
+  ctx.moveTo(200, 0);
+  ctx.lineTo(200, canvas.height);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawPlayer(){
+  ctx.fillStyle = "red";
+  ctx.fillRect(player.x, player.y, player.w, player.h);
+}
+
+function drawObstacles(){
+  ctx.fillStyle = "blue";
+  obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+}
+
+function drawUI(){
+  ctx.fillStyle = "white";
+  ctx.font = "16px sans-serif";
+  ctx.fillText("Score: " + score, 10, 20);
+}
+
+function gameLoop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  if(!player){
-    ctx.fillStyle="white";
-    ctx.fillText("上のボタンで開始",130,300);
-    return;
-  }
-
-  ctx.fillStyle="white";
-  ctx.fillRect(player.x,player.y,player.w,player.h);
-
-  bullets.forEach(b=>ctx.fillRect(b.x,b.y,5,10));
-  ctx.fillStyle="red";
-  enemyBullets.forEach(b=>ctx.fillRect(b.x,b.y,5,10));
-
-  ctx.fillStyle="lime";
-  enemies.forEach(e=>ctx.fillRect(e.x,e.y,e.w,e.h));
-
-  ctx.fillStyle="white";
-  ctx.fillText("Score: "+score,10,20);
-  ctx.fillText("Lives: "+player.lives,300,20);
-
-  if(gameOver){
-    ctx.font="30px sans-serif";
-    ctx.fillText(win?"CLEAR!":"GAME OVER",100,300);
-  }
-}
-
-function loop(){
   update();
-  draw();
-  requestAnimationFrame(loop);
+  drawRoad();
+  drawPlayer();
+  drawObstacles();
+  drawUI();
+  requestAnimationFrame(gameLoop);
 }
 
-loop();
+gameLoop();
 </script>
 </body>
 </html>
